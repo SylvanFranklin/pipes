@@ -1,0 +1,20 @@
+[package]
+name = "pipes"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+bevy = "0.14.0"
+bevy_ecs_tilemap = "0.14.0"
+petgraph = "0.6.5"
+rand = "0.8.5"
+
+# Enable a small amount of optimization in the dev profile.
+[profile.dev]
+opt-level = 1
+
+# Enable a large amount of optimization in the dev profile for dependencies.
+[profile.dev.package."*"]
+opt-level = 3
+
