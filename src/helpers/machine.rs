@@ -1,5 +1,6 @@
 use bevy::prelude::Component;
-use bevy_ecs_tilemap::helpers::square_grid::neighbors::{Neighbors, SquareDirection};
+use bevy::prelude::*;
+use bevy_ecs_tilemap::helpers::square_grid::neighbors::SquareDirection;
 use bevy_ecs_tilemap::prelude::*;
 
 #[allow(dead_code)]
@@ -16,6 +17,8 @@ pub enum PipeKind {
 pub struct Pipe {
     pub kind: PipeKind,
     pub connections: Connections,
+    flip: TileFlip,
+    pub texture_index: TileTextureIndex,
 }
 
 #[allow(dead_code)]
@@ -24,6 +27,29 @@ pub struct Connections {
     pub south: bool,
     pub east: bool,
     pub west: bool,
+}
+
+impl Connections {
+    pub fn to_vec(&self) -> Vec<SquareDirection> {
+        let mut set: Vec<SquareDirection> = Vec::new();
+
+        if self.north {
+            set.push(SquareDirection::North)
+        }
+
+        if self.south {
+            set.push(SquareDirection::South)
+        }
+
+        if self.east {
+            set.push(SquareDirection::East)
+        }
+
+        if self.west {
+            set.push(SquareDirection::West)
+        }
+        set
+    }
 }
 
 impl Connections {
@@ -56,7 +82,17 @@ impl Pipe {
         Pipe {
             kind,
             connections: Pipe::get_connections(&kind),
+            flip: TileFlip::default(),
+            texture_index: Pipe::get_texture_index(kind),
         }
+    }
+
+    // pub fn add_flip(&mut self, flip: Tilp) {
+    //     self.flip =
+    // }
+
+    pub fn spread_to_tile(self) -> (TileTextureIndex, TileFlip, Pipe) {
+        (self.texture_index, self.flip, self)
     }
 
     pub fn get_connections(kind: &PipeKind) -> Connections {
@@ -86,13 +122,29 @@ impl Pipe {
     //     self.connections.choose(&mut rand::thread_rng())
     // }
 
-    pub fn get_texture_index(kind: PipeKind) -> TileTextureIndex {
+    fn get_texture_index(kind: PipeKind) -> TileTextureIndex {
         use PipeKind::*;
         match kind {
             Straight => TileTextureIndex(1),
             Cross => TileTextureIndex(2),
             Elbow => TileTextureIndex(3),
             T => TileTextureIndex(3),
+        }
+    }
+
+    // pub fn insert_into_tilemap
+
+    pub fn random_from_dir(dir: &SquareDirection) -> Self {
+        match dir {
+            SquareDirection::North | SquareDirection::South => Pipe {
+                flip: TileFlip {
+                    d: true,
+                    ..default()
+                },
+                ..Pipe::new(PipeKind::Straight)
+            },
+            SquareDirection::East | SquareDirection::West => Pipe::new(PipeKind::Straight),
+            _ => Pipe::new(PipeKind::Cross),
         }
     }
 }

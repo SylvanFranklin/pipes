@@ -27,11 +27,11 @@ pub fn movement(
         }
 
         if keyboard_input.pressed(KeyCode::Equal) {
-            ortho.scale += 0.1;
+            ortho.scale -= 0.1;
         }
 
         if keyboard_input.pressed(KeyCode::Minus) {
-            ortho.scale -= 0.1;
+            ortho.scale += 0.1;
         }
 
         if keyboard_input.pressed(KeyCode::Digit0) {
