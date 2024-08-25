@@ -1,14 +1,25 @@
-use bevy::{input::ButtonInput, math::Vec3, prelude::*, render::camera::Camera};
+use bevy::{
+    input::{mouse::MouseWheel, ButtonInput},
+    math::Vec3,
+    prelude::*,
+    render::camera::Camera,
+};
 
 // A simple camera system for moving and zooming the camera.
 #[allow(dead_code)]
 pub fn movement(
     time: Res<Time>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut evr_scroll: EventReader<MouseWheel>,
     mut query: Query<(&mut Transform, &mut OrthographicProjection), With<Camera>>,
 ) {
     for (mut transform, mut ortho) in query.iter_mut() {
         let mut direction = Vec3::ZERO;
+
+        for ev in evr_scroll.read() {
+            direction -= Vec3::new(ev.x, 0.0, 0.0);
+            direction += Vec3::new(0.0, ev.y, 0.0);
+        }
 
         if keyboard_input.pressed(KeyCode::KeyW) {
             direction += Vec3::new(0.0, 1.0, 0.0);
@@ -38,9 +49,9 @@ pub fn movement(
             ortho.scale = 1.0;
         }
 
-        // if ortho.scale < 0.5 {
-        //     ortho.scale = 0.5;
-        // }
+        if ortho.scale < 0.5 {
+            ortho.scale = 0.5;
+        }
 
         let z = transform.translation.z;
         transform.translation += time.delta_seconds() * direction * 500.;
