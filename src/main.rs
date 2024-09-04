@@ -1,21 +1,23 @@
 mod helpers;
 use bevy::core_pipeline::bloom::BloomSettings;
-use bevy::math::vec3;
 use bevy::prelude::*;
-use bevy::sprite::MaterialMesh2dBundle;
 use bevy::window::WindowResolution;
-use bevy_ecs_tilemap::prelude::*;
+use bevy_ecs_tilemap::{
+    helpers::square_grid::neighbors::{Neighbors, SquareDirection},
+    prelude::*,
+};
+use helpers::{
+    background::setup_background,
+    machine::{Pipe, PipeKind},
+};
 
-#[allow(dead_code)]
 #[derive(Component)]
 struct LastUpdate(f64);
 
-fn startup(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials_color: ResMut<Assets<ColorMaterial>>,
-) {
+pub const MAP_SIZE: TilemapSize = TilemapSize { x: 60, y: 60 };
+pub const PIXEL_CELL_SIZE: TilemapTileSize = TilemapTileSize { x: 128.0, y: 128.0 };
+
+fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         Camera2dBundle {
             camera: Camera {
@@ -26,7 +28,7 @@ fn startup(
             projection: OrthographicProjection {
                 far: 1000.,
                 near: -1000.,
-                scale: 4.,
+                scale: 3.,
                 ..default()
             },
 
@@ -34,76 +36,64 @@ fn startup(
         },
         BloomSettings::NATURAL,
     ));
-    let texture_handle: Handle<Image> = asset_server.load("new_pipes.png");
-    let map_size = TilemapSize { x: 60, y: 60 };
-    let map_type = TilemapType::Square;
-    let mut tile_storage = TileStorage::empty(map_size);
-    let tilemap_entity = commands.spawn_empty().id();
 
-    let tile_size = TilemapTileSize { x: 128.0, y: 128.0 };
-    let grid_size = tile_size.into();
+    let texture_handle: Handle<Image> = asset_server.load("new_pipes.png");
+    let mut tile_storage = TileStorage::empty(MAP_SIZE);
+    let tilemap_entity = commands.spawn_empty().id();
     let start_pos = TilePos {
-        x: map_size.x / 2,
-        y: map_size.y / 2,
+        x: MAP_SIZE.x / 2,
+        y: MAP_SIZE.y / 2,
     };
 
-    commands.spawn(MaterialMesh2dBundle {
-        transform: Transform {
-            translation: vec3(0., 0., 0.5),
-            ..default()
-        },
-        mesh: meshes
-            .add(Rectangle::new(
-                (map_size.x as f32) * tile_size.x,
-                (map_size.y as f32) * tile_size.y,
-            ))
-            .into(),
-        material: materials_color.add(Color::srgb(0.02, 0.02, 0.02)), // RGB values exceed 1 to achieve a bright color for the bloom effect
-        ..default()
-    });
-
-    commands.spawn(ColorMesh2dBundle {
-        transform: Transform {
-            translation: vec3(0., 0., 1.),
-            ..default()
-        },
-        mesh: meshes.add(Circle::new(300.)).into(),
-        material: materials_color.add(Color::srgb(5., 5., 5.)), // RGB values exceed 1 to achieve a bright color for the bloom effect
-        ..default()
-    });
-
-    for x in 0..map_size.x {
-        for y in 0..map_size.y {
-            let tile_pos = TilePos { x, y };
-            let tile_entity = commands
-                .spawn(TileBundle {
-                    position: tile_pos,
-                    tilemap_id: TilemapId(tilemap_entity),
-                    texture_index: TileTextureIndex(0),
-                    ..default()
-                })
-                .id();
-            tile_storage.set(&tile_pos, tile_entity);
-        }
-    }
+    bevy_ecs_tilemap::helpers::filling::fill_tilemap(
+        TileTextureIndex(0),
+        MAP_SIZE,
+        TilemapId(tilemap_entity),
+        &mut commands,
+        &mut tile_storage,
+    );
 
     commands
         .entity(tile_storage.get(&start_pos).unwrap())
-        .insert(TileTextureIndex(0));
+        .insert(Pipe::new(PipeKind::Cross));
 
     commands.entity(tilemap_entity).insert((
         TilemapBundle {
-            grid_size,
-            size: map_size,
+            grid_size: PIXEL_CELL_SIZE.into(),
+            size: MAP_SIZE,
             storage: tile_storage,
-            map_type,
             texture: TilemapTexture::Single(texture_handle),
-            tile_size,
-            transform: get_tilemap_center_transform(&map_size, &grid_size, &map_type, 2.0),
+            tile_size: PIXEL_CELL_SIZE,
+            transform: get_tilemap_center_transform(
+                &MAP_SIZE,
+                &PIXEL_CELL_SIZE.into(),
+                &TilemapType::Square,
+                2.0,
+            ),
             ..Default::default()
         },
         LastUpdate(0.0),
     ));
+}
+
+fn advance_pipes(
+    time: ResMut<Time>,
+    mut map_query: Query<(&mut LastUpdate, &TileStorage)>,
+    pipe_query: Query<(&PipeKind, &TileFlip, &TilePos)>,
+    mut commands: Commands,
+) {
+    let (mut last_update, storage) = map_query.single_mut();
+    let current_time = time.elapsed_seconds_f64();
+    if (current_time - last_update.0) > 1. {
+        for (kind, flip, pos) in pipe_query.iter() {
+            let neighboring_pipes =
+                Neighbors::get_square_neighboring_positions(&pos, &MAP_SIZE, false)
+                    .entities(storage);
+
+        }
+
+        last_update.0 = current_time;
+    }
 }
 
 fn main() {
@@ -126,6 +116,8 @@ fn main() {
         )
         .add_plugins(TilemapPlugin)
         .add_systems(Startup, startup)
+        .add_systems(Startup, setup_background)
         .add_systems(Update, helpers::camera::movement)
+        .add_systems(Update, advance_pipes)
         .run();
 }
