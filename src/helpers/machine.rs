@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::{
-    helpers::square_grid::neighbors::{Neighbors, SquareDirection},
-    tiles::{TileFlip, TilePos, TileTextureIndex},
+    helpers::square_grid::neighbors::SquareDirection,
+    tiles::{TileFlip, TileTextureIndex},
 };
 
 #[allow(dead_code)]
@@ -34,7 +34,7 @@ impl PipeKind {
 pub struct Pipe {
     pub kind: PipeKind,
     pub texture_index: TileTextureIndex,
-    pub flip: TileFlip,
+    flip: TileFlip,
 }
 
 #[allow(dead_code)]
@@ -47,20 +47,23 @@ impl Pipe {
         }
     }
 
-    pub fn next_generation(
-        pipe: Pipe,
-        neighbors: Neighbors<Entity>,
-        pipe_query: &Query<(&PipeKind, &TileFlip, &TilePos)>,
-        commands: &mut Commands,
-    ) -> Self {
-        if pipe.kind == PipeKind::Cross {
-            if neighbors.west.is_none() {
-                commands
-                    .entity(neighbors.west.unwrap())
-                    .insert(Pipe::new(PipeKind::Straight));
-            }
-        }
+    pub fn with_flip(mut self, flip: SquareDirection) -> Self {
+        use SquareDirection::*;
 
-        return pipe;
+        self.flip = match flip {
+            North | South => TileFlip {
+                d: true,
+                ..default()
+            },
+            _ => TileFlip::default(),
+        };
+        self
+    }
+
+    pub fn next_generation(kind: PipeKind, dir: SquareDirection) -> Self {
+        match kind {
+            PipeKind::Cross => Pipe::new(PipeKind::Straight).with_flip(dir),
+            _ => Pipe::new(kind),
+        }
     }
 }

@@ -86,10 +86,14 @@ fn advance_pipes(
     let current_time = time.elapsed_seconds_f64();
     if (current_time - last_update.0) > 1. {
         for (kind, flip, pos) in pipe_query.iter() {
-            let neighboring_pipes =
-                Neighbors::get_square_neighboring_positions(&pos, &MAP_SIZE, false)
-                    .entities(storage);
-
+            Neighbors::get_square_neighboring_positions(&pos, &MAP_SIZE, false)
+                .entities(storage)
+                .iter_with_direction()
+                .for_each(|(d, e)| {
+                    commands
+                        .entity(*e)
+                        .insert(Pipe::next_generation(*kind, d));
+                });
         }
 
         last_update.0 = current_time;
