@@ -90,9 +90,11 @@ fn advance_pipes(
                 .entities(storage)
                 .iter_with_direction()
                 .for_each(|(d, e)| {
-                    commands
-                        .entity(*e)
-                        .insert(Pipe::next_generation(*kind, d));
+                    if pipe_query.get(*e).is_ok() {
+                        return;
+                    }
+
+                    commands.entity(*e).insert(Pipe::next_generation(*kind, d));
                 });
         }
 
