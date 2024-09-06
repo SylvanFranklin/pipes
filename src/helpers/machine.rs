@@ -63,6 +63,8 @@ impl Pipe {
     pub fn next_generation(kind: PipeKind, dir: SquareDirection) -> Self {
         match kind {
             PipeKind::Cross => Pipe::new(PipeKind::Straight).with_flip(dir),
+            PipeKind::Straight => Pipe::new(PipeKind::Elbow).with_flip(dir),
+            PipeKind::Elbow => Pipe::new(PipeKind::Cross).with_flip(dir),
             _ => Pipe::new(kind),
         }
     }

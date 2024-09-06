@@ -16,6 +16,10 @@ struct LastUpdate(f64);
 
 pub const MAP_SIZE: TilemapSize = TilemapSize { x: 60, y: 60 };
 pub const PIXEL_CELL_SIZE: TilemapTileSize = TilemapTileSize { x: 128.0, y: 128.0 };
+pub const START_POS: TilePos = TilePos {
+    x: MAP_SIZE.x / 2,
+    y: MAP_SIZE.y / 2,
+};
 
 fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
@@ -40,10 +44,6 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let texture_handle: Handle<Image> = asset_server.load("new_pipes.png");
     let mut tile_storage = TileStorage::empty(MAP_SIZE);
     let tilemap_entity = commands.spawn_empty().id();
-    let start_pos = TilePos {
-        x: MAP_SIZE.x / 2,
-        y: MAP_SIZE.y / 2,
-    };
 
     bevy_ecs_tilemap::helpers::filling::fill_tilemap(
         TileTextureIndex(0),
@@ -54,7 +54,7 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     );
 
     commands
-        .entity(tile_storage.get(&start_pos).unwrap())
+        .entity(tile_storage.get(&START_POS).unwrap())
         .insert(Pipe::new(PipeKind::Cross));
 
     commands.entity(tilemap_entity).insert((
@@ -79,13 +79,28 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
 fn advance_pipes(
     time: ResMut<Time>,
     mut map_query: Query<(&mut LastUpdate, &TileStorage)>,
-    pipe_query: Query<(&PipeKind, &TileFlip, &TilePos)>,
+    pipe_query: Query<(Entity, &PipeKind, &TileFlip, &TilePos)>,
     mut commands: Commands,
 ) {
     let (mut last_update, storage) = map_query.single_mut();
     let current_time = time.elapsed_seconds_f64();
-    if (current_time - last_update.0) > 1. {
-        for (kind, flip, pos) in pipe_query.iter() {
+    if (current_time - last_update.0) > 0.5 {
+        if pipe_query.iter().count() >= 1000 {
+            // remove all pipes and start over
+            for (ent, kind, _, pos) in pipe_query.iter() {
+                commands
+                    .entity(ent)
+                    .remove::<PipeKind>()
+                    .insert(TileTextureIndex(0));
+            }
+            commands
+                .entity(storage.get(&START_POS).unwrap())
+                .insert(Pipe::new(PipeKind::Cross));
+
+            return;
+        }
+
+        for (_ent, kind, flip, pos) in pipe_query.iter() {
             Neighbors::get_square_neighboring_positions(&pos, &MAP_SIZE, false)
                 .entities(storage)
                 .iter_with_direction()

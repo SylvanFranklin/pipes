@@ -19,9 +19,10 @@ pub fn setup_background(
             ))
             .into(),
         material: materials_color.add(Color::srgb(1.1, 1.1, 1.1)), // RGB values exceed 1 to achieve a bright color for the bloom effect
+        // material: materials_color.add(Color::srgb(0.01, 0.01, 0.01)), // RGB values exceed 1 to achieve a bright color for the bloom effect
         ..default()
     });
-    //
+
     // commands.spawn(ColorMesh2dBundle {
     //     transform: Transform {
     //         translation: vec3(0., 0., 1.),
