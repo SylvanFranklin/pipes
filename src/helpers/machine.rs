@@ -1,12 +1,13 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::{
-    helpers::square_grid::neighbors::SquareDirection,
-    tiles::{TileFlip, TileTextureIndex},
+    helpers::square_grid::neighbors::{Neighbors, SquareDirection},
+    tiles::{TileFlip, TilePos, TileTextureIndex},
 };
 
 #[allow(dead_code)]
 #[derive(Component, Clone, Copy)]
 pub enum PipeKind {
+    None,
     Straight,
     Elbow,
     Cross,
@@ -21,6 +22,7 @@ impl PipeKind {
 
     fn texture_index(&self) -> TileTextureIndex {
         match self {
+            PipeKind::None => TileTextureIndex(0),
             PipeKind::Straight => TileTextureIndex(1),
             PipeKind::Elbow => TileTextureIndex(3),
             PipeKind::Cross => TileTextureIndex(2),
@@ -60,12 +62,49 @@ impl Pipe {
         self
     }
 
-    pub fn next_generation(kind: PipeKind, dir: SquareDirection) -> Self {
+    pub fn next_generation(
+        kind: PipeKind,
+        dir: SquareDirection,
+        neighbors: Neighbors<(Entity, &PipeKind, &TileFlip, &TilePos)>,
+    ) -> Self {
+        // currently there is an overlap with neighbors.dir and kind
+
+        use PipeKind::*;
         match kind {
-            PipeKind::Cross => Pipe::new(PipeKind::Straight).with_flip(dir),
-            PipeKind::Straight => Pipe::new(PipeKind::Elbow).with_flip(dir),
-            PipeKind::Elbow => Pipe::new(PipeKind::Cross).with_flip(dir),
-            _ => Pipe::new(kind),
+            Cross => Pipe::new(Straight).with_flip(dir),
+            Straight => {
+                // randomy one in three chance for an L piece
+                if rand::random::<f32>() < 0.33 {
+                    return Pipe::new(T).with_flip(dir);
+                }
+
+                if neighbors.north.is_none() || neighbors.south.is_some() {
+                    return Pipe::new(Cross);
+                }
+
+                return Pipe::new(Elbow).with_flip(dir);
+            }
+            T => {
+                if neighbors.north.is_none() {
+                    return Pipe::new(Straight).with_flip(SquareDirection::North);
+                }
+
+                if neighbors.east.is_none() {
+                    return Pipe::new(Straight).with_flip(SquareDirection::East);
+                }
+
+                if neighbors.south.is_none() {
+                    return Pipe::new(Straight).with_flip(SquareDirection::South);
+                }
+
+                if neighbors.west.is_none() {
+                    return Pipe::new(Straight).with_flip(SquareDirection::West);
+                }
+
+                return Pipe::new(Cross);
+            }
+            Elbow => Pipe::new(Straight),
+            _ => Pipe::new(None),
         }
     }
 }

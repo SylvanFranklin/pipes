@@ -100,7 +100,7 @@ fn advance_pipes(
             return;
         }
 
-        for (_ent, kind, flip, pos) in pipe_query.iter() {
+        for (_ent, kind, _flip, pos) in pipe_query.iter() {
             Neighbors::get_square_neighboring_positions(&pos, &MAP_SIZE, false)
                 .entities(storage)
                 .iter_with_direction()
@@ -108,8 +108,14 @@ fn advance_pipes(
                     if pipe_query.get(*e).is_ok() {
                         return;
                     }
+                    let neighbors =
+                        Neighbors::get_square_neighboring_positions(&pos, &MAP_SIZE, false)
+                            .entities(storage)
+                            .and_then(|n| pipe_query.get(n).ok());
 
-                    commands.entity(*e).insert(Pipe::next_generation(*kind, d));
+                    commands
+                        .entity(*e)
+                        .insert(Pipe::next_generation(*kind, d, neighbors));
                 });
         }
 
