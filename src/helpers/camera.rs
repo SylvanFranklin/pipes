@@ -49,6 +49,9 @@ pub fn movement(
             ortho.scale = 1.0;
         }
 
+
+
+
         if ortho.scale < 0.5 {
             ortho.scale = 0.5;
         }

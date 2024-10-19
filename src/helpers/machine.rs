@@ -5,9 +5,8 @@ use bevy_ecs_tilemap::{
 };
 
 #[allow(dead_code)]
-#[derive(Component, Clone, Copy)]
+#[derive(Component, Clone, Copy, Eq, PartialEq)]
 pub enum PipeKind {
-    None,
     Straight,
     Elbow,
     Cross,
@@ -22,11 +21,48 @@ impl PipeKind {
 
     fn texture_index(&self) -> TileTextureIndex {
         match self {
-            PipeKind::None => TileTextureIndex(0),
             PipeKind::Straight => TileTextureIndex(1),
-            PipeKind::Elbow => TileTextureIndex(3),
             PipeKind::Cross => TileTextureIndex(2),
-            PipeKind::T => TileTextureIndex(4),
+            PipeKind::Elbow => TileTextureIndex(4),
+            PipeKind::T => TileTextureIndex(3),
+        }
+    }
+
+    pub fn connections_with_flip(&self, flip: TileFlip) -> Vec<SquareDirection> {
+        use SquareDirection::*;
+        let mut connections = self.connections();
+        if flip.d {
+            connections = connections
+                .iter()
+                .map(|d| match d {
+                    North => West,
+                    South => East,
+                    East => South,
+                    West => North,
+                    _ => *d,
+                })
+                .collect();
+        }
+
+        connections
+    }
+
+    pub fn connections(&self) -> Vec<SquareDirection> {
+        use PipeKind::*;
+        match self {
+            Straight => vec![SquareDirection::East, SquareDirection::West],
+            Elbow => vec![SquareDirection::South, SquareDirection::West],
+            Cross => vec![
+                SquareDirection::North,
+                SquareDirection::East,
+                SquareDirection::South,
+                SquareDirection::West,
+            ],
+            T => vec![
+                SquareDirection::North,
+                SquareDirection::East,
+                SquareDirection::South,
+            ],
         }
     }
 }
@@ -36,7 +72,7 @@ impl PipeKind {
 pub struct Pipe {
     pub kind: PipeKind,
     pub texture_index: TileTextureIndex,
-    flip: TileFlip,
+    pub flip: TileFlip,
 }
 
 #[allow(dead_code)]
@@ -49,16 +85,42 @@ impl Pipe {
         }
     }
 
+    pub fn connections(&self) -> Vec<SquareDirection> {
+        self.kind
+            .connections()
+            .iter()
+            .map(|d| {
+                if self.flip.d {
+                    match d {
+                        SquareDirection::North => SquareDirection::South,
+                        SquareDirection::South => SquareDirection::North,
+                        SquareDirection::East => SquareDirection::West,
+                        SquareDirection::West => SquareDirection::East,
+                        _ => unreachable!(),
+                    }
+                } else {
+                    *d
+                }
+            })
+            .collect()
+    }
+
     pub fn with_flip(mut self, flip: SquareDirection) -> Self {
+        use PipeKind::*;
         use SquareDirection::*;
 
         self.flip = match flip {
-            North | South => TileFlip {
+            North | South if self.kind == Straight => TileFlip {
+                d: true,
+                ..default()
+            },
+            South | West if self.kind == Elbow => TileFlip {
                 d: true,
                 ..default()
             },
             _ => TileFlip::default(),
         };
+
         self
     }
 
@@ -73,17 +135,9 @@ impl Pipe {
         match kind {
             Cross => Pipe::new(Straight).with_flip(dir),
             Straight => {
-                // randomy one in three chance for an L piece
-                if rand::random::<f32>() < 0.33 {
-                    return Pipe::new(T).with_flip(dir);
-                }
-
-                if neighbors.north.is_none() || neighbors.south.is_some() {
-                    return Pipe::new(Cross);
-                }
-
                 return Pipe::new(Elbow).with_flip(dir);
             }
+
             T => {
                 if neighbors.north.is_none() {
                     return Pipe::new(Straight).with_flip(SquareDirection::North);
@@ -104,7 +158,6 @@ impl Pipe {
                 return Pipe::new(Cross);
             }
             Elbow => Pipe::new(Straight),
-            _ => Pipe::new(None),
         }
     }
 }
