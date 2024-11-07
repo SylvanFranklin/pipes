@@ -134,9 +134,7 @@ pub fn advance_pipes(
                             // the straight pipe is facing, then and only then can we place this.
 
                             if pipe_query.get(*ent).is_err() && connections.contains(&d) {
-                                commands
-                                    .entity(*ent)
-                                    .insert(Pipe::new(Cross).with_flip(d));
+                                commands.entity(*ent).insert(Pipe::new(Cross).with_flip(d));
                             }
                         });
                 }
