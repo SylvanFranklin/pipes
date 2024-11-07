@@ -1,12 +1,13 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::{
-    helpers::square_grid::neighbors::{Neighbors, SquareDirection},
-    tiles::{TileFlip, TilePos, TileTextureIndex},
+    helpers::square_grid::neighbors::SquareDirection,
+    tiles::{TileFlip, TileTextureIndex},
 };
 
 #[allow(dead_code)]
-#[derive(Component, Clone, Copy, Eq, PartialEq)]
+#[derive(Component, Clone, Copy, Eq, PartialEq, Debug)]
 pub enum PipeKind {
+    Empty,
     Straight,
     Elbow,
     Cross,
@@ -25,6 +26,7 @@ impl PipeKind {
             PipeKind::Cross => TileTextureIndex(2),
             PipeKind::Elbow => TileTextureIndex(4),
             PipeKind::T => TileTextureIndex(3),
+            _ => TileTextureIndex(0),
         }
     }
 
@@ -63,6 +65,8 @@ impl PipeKind {
                 SquareDirection::East,
                 SquareDirection::South,
             ],
+
+            _ => vec![],
         }
     }
 }
@@ -123,41 +127,39 @@ impl Pipe {
 
         self
     }
+}
 
-    pub fn next_generation(
-        kind: PipeKind,
-        dir: SquareDirection,
-        neighbors: Neighbors<(Entity, &PipeKind, &TileFlip, &TilePos)>,
-    ) -> Self {
-        // currently there is an overlap with neighbors.dir and kind
+pub struct GenerationRule {
+    pub pattern: PipeKind,
+    pub replace: PipeKind,
+    pub interrupt: bool,
+}
 
+pub struct PipeClusterConstructor {
+    pub rules: Vec<GenerationRule>,
+}
+
+impl PipeClusterConstructor {
+    pub fn new() -> Self {
         use PipeKind::*;
-        match kind {
-            Cross => Pipe::new(Straight).with_flip(dir),
-            Straight => {
-                return Pipe::new(Elbow).with_flip(dir);
-            }
-
-            T => {
-                if neighbors.north.is_none() {
-                    return Pipe::new(Straight).with_flip(SquareDirection::North);
-                }
-
-                if neighbors.east.is_none() {
-                    return Pipe::new(Straight).with_flip(SquareDirection::East);
-                }
-
-                if neighbors.south.is_none() {
-                    return Pipe::new(Straight).with_flip(SquareDirection::South);
-                }
-
-                if neighbors.west.is_none() {
-                    return Pipe::new(Straight).with_flip(SquareDirection::West);
-                }
-
-                return Pipe::new(Cross);
-            }
-            Elbow => Pipe::new(Straight),
+        Self {
+            rules: vec![
+                GenerationRule {
+                    pattern: Empty,
+                    replace: Straight,
+                    interrupt: false,
+                },
+                GenerationRule {
+                    pattern: Straight,
+                    replace: Elbow,
+                    interrupt: false,
+                },
+                GenerationRule {
+                    pattern: Elbow,
+                    replace: Cross,
+                    interrupt: false,
+                },
+            ],
         }
     }
 }

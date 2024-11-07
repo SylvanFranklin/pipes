@@ -2,13 +2,13 @@ mod helpers;
 use bevy::core_pipeline::bloom::BloomSettings;
 use bevy::prelude::*;
 use bevy::window::WindowResolution;
-use bevy_ecs_tilemap::{helpers::square_grid::neighbors::Neighbors, prelude::*};
+use bevy_ecs_tilemap::prelude::*;
 use helpers::{
     background::setup_background,
-    machine::{Pipe, PipeKind},
+    machine::{GenerationRule, Pipe, PipeClusterConstructor, PipeKind},
 };
 
-pub const MAP_SIZE: TilemapSize = TilemapSize { x: 60, y: 60 };
+pub const MAP_SIZE: TilemapSize = TilemapSize { x: 20, y: 20 };
 pub const PIXEL_CELL_SIZE: TilemapTileSize = TilemapTileSize { x: 128.0, y: 128.0 };
 pub const START_POS: TilePos = TilePos {
     x: MAP_SIZE.x / 2,
@@ -39,14 +39,21 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let mut tile_storage = TileStorage::empty(MAP_SIZE);
     let tilemap_entity = commands.spawn_empty().id();
 
-    bevy_ecs_tilemap::helpers::filling::fill_tilemap(
-        TileTextureIndex(0),
-        MAP_SIZE,
-        TilemapId(tilemap_entity),
-        &mut commands,
-        &mut tile_storage,
-    );
+    for x in 0..MAP_SIZE.x {
+        for y in 0..MAP_SIZE.y {
+            let tile_pos = TilePos { x, y };
+            let tile_entity = commands
+                .spawn(TileBundle {
+                    position: tile_pos,
+                    tilemap_id: TilemapId(tilemap_entity),
+                    ..Default::default()
+                })
+                .insert(Pipe::new(PipeKind::Empty))
+                .id();
 
+            tile_storage.set(&tile_pos, tile_entity);
+        }
+    }
     commands
         .entity(tile_storage.get(&START_POS).unwrap())
         .insert(Pipe::new(PipeKind::Cross));
@@ -69,91 +76,49 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 pub fn advance_pipes(
     mut map_query: Query<&TileStorage>,
-    pipe_query: Query<(Entity, &PipeKind, &TileFlip, &TilePos)>,
+    pipe_query: Query<(Entity, &PipeKind, &TilePos)>,
     mut commands: Commands,
     keys: Res<ButtonInput<KeyCode>>,
 ) {
     if keys.just_pressed(KeyCode::Space) {
-        let storage = map_query.single_mut();
-        if pipe_query.iter().count() >= 1600 {
-            for (ent, _kind, _, _pos) in pipe_query.iter() {
-                commands
-                    .entity(ent)
-                    .remove::<PipeKind>()
-                    .insert(TileTextureIndex(0));
-            }
-            commands
-                .entity(storage.get(&START_POS).unwrap())
-                .insert(Pipe::new(PipeKind::Cross));
+        // let storage = map_query.single_mut();
+        // if pipe_query.iter().count() >= 1600 {
+        //     for (ent, _kind, _pos) in pipe_query.iter() {
+        //         commands
+        //             .entity(ent)
+        //             .remove::<PipeKind>()
+        //             .insert(TileTextureIndex(0));
+        //     }
+        //     commands
+        //         .entity(storage.get(&START_POS).unwrap())
+        //         .insert(Pipe::new(PipeKind::Cross));
+        //
+        //     return;
+        // }
 
-            return;
-        }
+        let cluster = PipeClusterConstructor::new();
+        // clusters.rules contains a list of patterns that we c a list of patterns that we can
+        // match, for instance [Empty] --> [Straight]
 
-        pipe_query.iter().for_each(|(_ent, kind, flip, pos)| {
-            let neighbors = Neighbors::get_square_neighboring_positions(&pos, &MAP_SIZE, false);
-            use PipeKind::*;
-
-            match *kind {
-                Cross => neighbors.iter_with_direction().for_each(|(d, pos)| {
-                    // we know that this pos is a valid entity
-                    // we want to check the next entity over in the dir.
-                    // if both this pos and the next pos are empty, we can replace them with a
-                    // straight pipe each.
-
-                    if let Some(next_pos) = pos.square_offset(&d, &MAP_SIZE) {
-                        commands
-                            .entity(storage.get(&pos).unwrap())
-                            .insert(Pipe::new(Straight).with_flip(d));
-                        commands
-                            .entity(storage.get(&next_pos).unwrap())
-                            .insert(Pipe::new(Straight).with_flip(d));
-                    }
-                }),
-                Straight => {
-                    neighbors
-                        .entities(storage)
-                        .iter_with_direction()
-                        .for_each(|(d, ent)| {
-                            // make sure that the direction of this neighbor, is the same as the direction
-                            // the straight pipe is facing, then and only then can we place this.
-                            if pipe_query.get(*ent).is_err() {
-                                if Pipe::new(Straight).with_flip(d).flip == *flip {
-                                    commands.entity(*ent).insert(Pipe::new(Elbow).with_flip(d));
-                                }
-                            }
-                        })
-                }
-
-                Elbow => {
-                    let connections = kind.connections_with_flip(*flip);
-                    neighbors
-                        .entities(storage)
-                        .iter_with_direction()
-                        .for_each(|(d, ent)| {
-                            // make sure that the direction of this neighbor, is the same as the direction
-                            // the straight pipe is facing, then and only then can we place this.
-
-                            if pipe_query.get(*ent).is_err() && connections.contains(&d) {
-                                commands.entity(*ent).insert(Pipe::new(Cross).with_flip(d));
-                            }
-                        });
-                }
-                T => {
-                    let connections = kind.connections_with_flip(*flip);
-                    neighbors
-                        .entities(storage)
-                        .iter_with_direction()
-                        .for_each(|(d, ent)| {
-                            // make sure that the direction of this neighbor, is the same as the direction
-                            // the straight pipe is facing, then and only then can we place this.
-                            //
-                            if pipe_query.get(*ent).is_err() && connections.contains(&d) {
-                                commands.entity(*ent).insert(Pipe::new(Straight));
-                            }
-                        });
+        // get all matches
+        let mut matches: Vec<(Entity, &GenerationRule)> = Vec::<(Entity, &GenerationRule)>::new();
+        cluster.rules.iter().for_each(|rule| {
+            for (ent, kind, _pos) in pipe_query.iter() {
+                if rule.pattern == *kind {
+                    matches.push((ent, rule));
                 }
             }
         });
+
+        let mut rng = rand::thread_rng();
+        use rand::seq::SliceRandom;
+
+        // In case there are no matches
+        if let Some((ent, rule)) = matches.choose(&mut rng) {
+            commands.entity(*ent).insert(Pipe::new(rule.replace));
+        } else {
+            println!("out of matches");
+        }
     }
 }
 
