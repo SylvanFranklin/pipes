@@ -111,12 +111,10 @@ pub fn advance_pipes(
                 // this shows that we have a match in this strip
                 if rule.pattern.strip.iter().any(|itm| itm == kind) {
                     // now we have to validate that the rest of the strip matches
+
                     matches.push((ent, rule));
                 }
 
-                // if
-                // {
-                // }
             }
         });
 
