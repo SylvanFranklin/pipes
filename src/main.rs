@@ -104,9 +104,19 @@ pub fn advance_pipes(
         let mut matches: Vec<(Entity, &GenerationRule)> = Vec::<(Entity, &GenerationRule)>::new();
         cluster.rules.iter().for_each(|rule| {
             for (ent, kind, _pos) in pipe_query.iter() {
-                if rule.pattern == *kind {
+                // handle matching logic. There are swatchs of tiles that we have to match against,
+                // we have single long lines, if there is a match along any of them we have to
+                // check if the neighbors all line up in a good way too.
+
+                // this shows that we have a match in this strip
+                if rule.pattern.strip.iter().any(|itm| itm == kind) {
+                    // now we have to validate that the rest of the strip matches
                     matches.push((ent, rule));
                 }
+
+                // if
+                // {
+                // }
             }
         });
 
@@ -115,7 +125,9 @@ pub fn advance_pipes(
 
         // In case there are no matches
         if let Some((ent, rule)) = matches.choose(&mut rng) {
-            commands.entity(*ent).insert(Pipe::new(rule.replace));
+            commands
+                .entity(*ent)
+                .insert(Pipe::new(*rule.replace.strip.get(0).unwrap()));
         } else {
             println!("out of matches");
         }

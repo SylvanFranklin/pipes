@@ -7,6 +7,7 @@ use bevy_ecs_tilemap::{
 #[allow(dead_code)]
 #[derive(Component, Clone, Copy, Eq, PartialEq, Debug)]
 pub enum PipeKind {
+    Any,
     Empty,
     Straight,
     Elbow,
@@ -129,9 +130,35 @@ impl Pipe {
     }
 }
 
+#[derive(PartialEq, Eq)]
+pub struct Pattern {
+    pub strip: Vec<PipeKind>,
+}
+
+impl Pattern {
+    pub fn new(raw: &str) -> Self {
+        let mut strip: Vec<PipeKind> = Vec::new();
+        use PipeKind::*;
+        String::from(raw).chars().for_each(|c| {
+            match c {
+                ' ' => strip.push(Empty),
+                '+' => strip.push(Cross),
+                '-' => strip.push(Straight),
+                'l' => strip.push(Elbow),
+                'T' => strip.push(T),
+                '*' => strip.push(Any),
+                _ => {}
+            };
+        });
+
+        Pattern { strip }
+    }
+}
+
+// Make pattern more complex so that it can be generalized to anything.
 pub struct GenerationRule {
-    pub pattern: PipeKind,
-    pub replace: PipeKind,
+    pub pattern: Pattern,
+    pub replace: Pattern,
     pub interrupt: bool,
 }
 
@@ -141,25 +168,12 @@ pub struct PipeClusterConstructor {
 
 impl PipeClusterConstructor {
     pub fn new() -> Self {
-        use PipeKind::*;
         Self {
-            rules: vec![
-                GenerationRule {
-                    pattern: Empty,
-                    replace: Straight,
-                    interrupt: false,
-                },
-                GenerationRule {
-                    pattern: Straight,
-                    replace: Elbow,
-                    interrupt: false,
-                },
-                GenerationRule {
-                    pattern: Elbow,
-                    replace: Cross,
-                    interrupt: false,
-                },
-            ],
+            rules: vec![GenerationRule {
+                pattern: Pattern::new(" "),
+                replace: Pattern::new("-"),
+                interrupt: false,
+            }],
         }
     }
 }
