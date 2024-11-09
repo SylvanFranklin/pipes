@@ -103,8 +103,8 @@ pub fn advance_pipes(
         while let Some(tile) = iter.next() {
             let (_ent, kind, pos) = pipe_query.get(tile.unwrap()).unwrap();
             cluster.rules.iter().for_each(|rule| {
-                if rule.pattern.iter().next().unwrap() == kind {
-                    matches.push(vec![(*pos, *kind, *rule.replace.iter().next().unwrap())]);
+                if rule.pattern.iter().next().unwrap().0 == *kind {
+                    matches.push(vec![(*pos, *kind, rule.pattern.iter().next().unwrap().1)]);
                 }
             });
         }
