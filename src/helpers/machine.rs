@@ -170,8 +170,8 @@ impl PipeClusterConstructor {
     pub fn new() -> Self {
         Self {
             rules: vec![GenerationRule {
-                pattern: Pattern::new(" "),
-                replace: Pattern::new("-"),
+                pattern: Pattern::new(" +"),
+                replace: Pattern::new("-+"),
                 interrupt: false,
             }],
         }

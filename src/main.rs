@@ -81,7 +81,7 @@ pub fn advance_pipes(
     keys: Res<ButtonInput<KeyCode>>,
 ) {
     if keys.just_pressed(KeyCode::Space) {
-        // let storage = map_query.single_mut();
+        let storage: &TileStorage = map_query.single_mut();
         // if pipe_query.iter().count() >= 1600 {
         //     for (ent, _kind, _pos) in pipe_query.iter() {
         //         commands
@@ -97,35 +97,31 @@ pub fn advance_pipes(
         // }
 
         let cluster = PipeClusterConstructor::new();
-        // clusters.rules contains a list of patterns that we c a list of patterns that we can
-        // match, for instance [Empty] --> [Straight]
-
-        // get all matches
-        let mut matches: Vec<(Entity, &GenerationRule)> = Vec::<(Entity, &GenerationRule)>::new();
+        let mut matches: Vec<(Vec<TilePos>, GenerationRule)> = Vec::new();
         cluster.rules.iter().for_each(|rule| {
-            for (ent, kind, _pos) in pipe_query.iter() {
-                // handle matching logic. There are swatchs of tiles that we have to match against,
-                // we have single long lines, if there is a match along any of them we have to
-                // check if the neighbors all line up in a good way too.
+            storage.iter().peekable().for_each(|tile| {
+                // get the kind of the tile
+                let kind = tile.is_some().then(|| {
+                    pipe_query
+                        .get(tile.unwrap())
+                        .map(|(_ent, kind, _pos)| *kind)
+                        .unwrap_or(PipeKind::Empty)
+                });
+            });
 
-                // this shows that we have a match in this strip
-                if rule.pattern.strip.iter().any(|itm| itm == kind) {
-                    // now we have to validate that the rest of the strip matches
-
-                    matches.push((ent, rule));
-                }
-
-            }
+            pipe_query
+                .iter()
+                .peekable()
+                .for_each(|(global_ent, global_kind, global_pos)| {});
         });
 
         let mut rng = rand::thread_rng();
         use rand::seq::SliceRandom;
 
-        // In case there are no matches
-        if let Some((ent, rule)) = matches.choose(&mut rng) {
-            commands
-                .entity(*ent)
-                .insert(Pipe::new(*rule.replace.strip.get(0).unwrap()));
+        if let Some(rule) = matches.choose(&mut rng) {
+            // commands
+            //     .entity(*ent)
+            //     .insert(Pipe::new(*rule.replace.strip.get(0).unwrap()));
         } else {
             println!("out of matches");
         }
