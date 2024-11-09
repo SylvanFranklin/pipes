@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::{
-    helpers::square_grid::neighbors::SquareDirection,
+    helpers::square_grid::neighbors::{Neighbors, SquareDirection},
     tiles::{TileFlip, TileTextureIndex},
 };
 
@@ -130,36 +130,49 @@ impl Pipe {
     }
 }
 
-#[derive(PartialEq, Eq)]
-pub struct Pattern {
-    pub strip: Vec<PipeKind>,
+#[derive(Clone)]
+pub struct GenerationRule {
+    pub pattern: Vec<PipeKind>,
+    pub replace: Vec<PipeKind>,
+    pub interrupt: bool,
 }
 
-impl Pattern {
-    pub fn new(raw: &str) -> Self {
-        let mut strip: Vec<PipeKind> = Vec::new();
+impl GenerationRule {
+    pub fn new(raw_pattern: &str, raw_replace: &str) -> Self {
+        let mut pattern: Vec<PipeKind> = Vec::new();
+        let mut replace: Vec<PipeKind> = Vec::new();
+
         use PipeKind::*;
-        String::from(raw).chars().for_each(|c| {
+        String::from(raw_replace).chars().for_each(|c| {
             match c {
-                ' ' => strip.push(Empty),
-                '+' => strip.push(Cross),
-                '-' => strip.push(Straight),
-                'l' => strip.push(Elbow),
-                'T' => strip.push(T),
-                '*' => strip.push(Any),
+                ' ' => replace.push(Empty),
+                '+' => replace.push(Cross),
+                '-' => replace.push(Straight),
+                'l' => replace.push(Elbow),
+                'T' => replace.push(T),
+                '*' => replace.push(Any),
                 _ => {}
             };
         });
+        String::from(raw_pattern).chars().for_each(|c| {
+            match c {
+                ' ' => pattern.push(Empty),
+                '+' => pattern.push(Cross),
+                '-' => pattern.push(Straight),
+                'l' => pattern.push(Elbow),
+                'T' => pattern.push(T),
+                '*' => pattern.push(Any),
+                _ => {}
+            };
+        });
+        let interrupt = false;
 
-        Pattern { strip }
+        GenerationRule {
+            pattern,
+            replace,
+            interrupt,
+        }
     }
-}
-
-// Make pattern more complex so that it can be generalized to anything.
-pub struct GenerationRule {
-    pub pattern: Pattern,
-    pub replace: Pattern,
-    pub interrupt: bool,
 }
 
 pub struct PipeClusterConstructor {
@@ -169,11 +182,7 @@ pub struct PipeClusterConstructor {
 impl PipeClusterConstructor {
     pub fn new() -> Self {
         Self {
-            rules: vec![GenerationRule {
-                pattern: Pattern::new(" +"),
-                replace: Pattern::new("-+"),
-                interrupt: false,
-            }],
+            rules: vec![GenerationRule::new(" ", "-")],
         }
     }
 }
