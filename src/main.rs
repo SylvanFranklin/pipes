@@ -97,31 +97,26 @@ pub fn advance_pipes(
         // }
 
         let cluster = PipeClusterConstructor::new();
-        let mut matches: Vec<(Vec<TilePos>, GenerationRule)> = Vec::new();
-        cluster.rules.iter().for_each(|rule| {
-            storage.iter().peekable().for_each(|tile| {
-                // get the kind of the tile
-                let kind = tile.is_some().then(|| {
-                    pipe_query
-                        .get(tile.unwrap())
-                        .map(|(_ent, kind, _pos)| *kind)
-                        .unwrap_or(PipeKind::Empty)
-                });
+        // This represents where and what to replace with what
+        let mut matches: Vec<Vec<(TilePos, PipeKind, PipeKind)>> = Vec::new();
+        let mut iter = storage.iter().peekable();
+        while let Some(tile) = iter.next() {
+            let (_ent, kind, pos) = pipe_query.get(tile.unwrap()).unwrap();
+            cluster.rules.iter().for_each(|rule| {
+                if rule.pattern.iter().next().unwrap() == kind {
+                    matches.push(vec![(*pos, *kind, *rule.replace.iter().next().unwrap())]);
+                }
             });
-
-            pipe_query
-                .iter()
-                .peekable()
-                .for_each(|(global_ent, global_kind, global_pos)| {});
-        });
+        }
 
         let mut rng = rand::thread_rng();
         use rand::seq::SliceRandom;
 
-        if let Some(rule) = matches.choose(&mut rng) {
-            // commands
-            //     .entity(*ent)
-            //     .insert(Pipe::new(*rule.replace.strip.get(0).unwrap()));
+        if let Some(replace) = matches.choose(&mut rng) {
+            replace.iter().for_each(|(pos, _, kind)| {
+                let t = storage.get(pos).unwrap();
+                commands.entity(t).insert(Pipe::new(*kind));
+            })
         } else {
             println!("out of matches");
         }
