@@ -132,46 +132,35 @@ impl Pipe {
 
 #[derive(Clone)]
 pub struct GenerationRule {
-    pub pattern: Vec<PipeKind>,
-    pub replace: Vec<PipeKind>,
+    // making these one thing forces uniform length
+    pub pattern: Vec<(PipeKind, PipeKind)>,
     pub interrupt: bool,
 }
 
 impl GenerationRule {
     pub fn new(raw_pattern: &str, raw_replace: &str) -> Self {
-        let mut pattern: Vec<PipeKind> = Vec::new();
-        let mut replace: Vec<PipeKind> = Vec::new();
+        let mut pattern: Vec<(PipeKind, PipeKind)> = Vec::new();
 
-        use PipeKind::*;
-        String::from(raw_replace).chars().for_each(|c| {
+        fn take(c: char) -> PipeKind {
+            use PipeKind::*;
             match c {
-                ' ' => replace.push(Empty),
-                '+' => replace.push(Cross),
-                '-' => replace.push(Straight),
-                'l' => replace.push(Elbow),
-                'T' => replace.push(T),
-                '*' => replace.push(Any),
-                _ => {}
-            };
-        });
-        String::from(raw_pattern).chars().for_each(|c| {
-            match c {
-                ' ' => pattern.push(Empty),
-                '+' => pattern.push(Cross),
-                '-' => pattern.push(Straight),
-                'l' => pattern.push(Elbow),
-                'T' => pattern.push(T),
-                '*' => pattern.push(Any),
-                _ => {}
-            };
-        });
-        let interrupt = false;
-
-        GenerationRule {
-            pattern,
-            replace,
-            interrupt,
+                ' ' => Empty,
+                '+' => Cross,
+                '-' => Straight,
+                'l' => Elbow,
+                'T' => T,
+                '*' => Any,
+                _ => unreachable!(),
+            }
         }
+
+        String::from(raw_pattern)
+            .chars()
+            .zip(String::from(raw_replace).chars())
+            .for_each(|(p, r)| pattern.push((take(p), take(r))));
+
+        let interrupt = false;
+        GenerationRule { pattern, interrupt }
     }
 }
 
