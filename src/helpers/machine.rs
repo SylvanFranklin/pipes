@@ -171,8 +171,10 @@ pub struct PipeClusterConstructor {
 impl PipeClusterConstructor {
     pub fn new() -> Self {
         Self {
-            rules: vec![GenerationRule::new(" ", "-")],
-            rules: vec![GenerationRule::new(" +", "-+")],
+            rules: vec![
+                GenerationRule::new(" ", "-"),
+                GenerationRule::new(" +", "-+"),
+            ],
         }
     }
 }
