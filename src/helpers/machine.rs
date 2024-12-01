@@ -1,16 +1,47 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::{
     helpers::square_grid::neighbors::{Neighbors, SquareDirection},
-    tiles::{TileFlip, TilePos, TileTextureIndex},
+    tiles::{TileFlip, TileTextureIndex},
 };
 
 #[allow(dead_code)]
-#[derive(Component, Clone, Copy, Eq, PartialEq)]
+#[derive(Component, Clone, Copy, Eq, PartialEq, Debug)]
 pub enum PipeKind {
+    Any,
+    Empty,
     Straight,
     Elbow,
     Cross,
     T,
+}
+
+impl From<char> for PipeKind {
+    fn from(c: char) -> Self {
+        use PipeKind::*;
+        match c {
+            '*' => Any,
+            ' ' => Empty,
+            '-' => Straight,
+            'l' => Elbow,
+            '+' => Cross,
+            'T' => T,
+            _ => Empty,
+        }
+    }
+}
+
+impl ToString for PipeKind {
+    fn to_string(&self) -> String {
+        use PipeKind::*;
+        match self {
+            Any => "*".to_string(),
+            Empty => " ".to_string(),
+            Straight => "-".to_string(),
+            Elbow => "l".to_string(),
+            Cross => "+".to_string(),
+            T => "T".to_string(),
+        }
+    }
 }
 
 #[allow(dead_code)]
@@ -25,6 +56,7 @@ impl PipeKind {
             PipeKind::Cross => TileTextureIndex(2),
             PipeKind::Elbow => TileTextureIndex(4),
             PipeKind::T => TileTextureIndex(3),
+            _ => TileTextureIndex(0),
         }
     }
 
@@ -63,6 +95,8 @@ impl PipeKind {
                 SquareDirection::East,
                 SquareDirection::South,
             ],
+
+            _ => vec![],
         }
     }
 }
@@ -123,41 +157,20 @@ impl Pipe {
 
         self
     }
+}
 
-    pub fn next_generation(
-        kind: PipeKind,
-        dir: SquareDirection,
-        neighbors: Neighbors<(Entity, &PipeKind, &TileFlip, &TilePos)>,
-    ) -> Self {
-        // currently there is an overlap with neighbors.dir and kind
+#[derive(Clone)]
+pub struct GenerationRule {
+    // making these one thing forces uniform length
+    pub pattern: String,
+    pub replacement: String,
+}
 
-        use PipeKind::*;
-        match kind {
-            Cross => Pipe::new(Straight).with_flip(dir),
-            Straight => {
-                return Pipe::new(Elbow).with_flip(dir);
-            }
-
-            T => {
-                if neighbors.north.is_none() {
-                    return Pipe::new(Straight).with_flip(SquareDirection::North);
-                }
-
-                if neighbors.east.is_none() {
-                    return Pipe::new(Straight).with_flip(SquareDirection::East);
-                }
-
-                if neighbors.south.is_none() {
-                    return Pipe::new(Straight).with_flip(SquareDirection::South);
-                }
-
-                if neighbors.west.is_none() {
-                    return Pipe::new(Straight).with_flip(SquareDirection::West);
-                }
-
-                return Pipe::new(Cross);
-            }
-            Elbow => Pipe::new(Straight),
+impl GenerationRule {
+    pub fn new(pattern: &str, replacement: &str) -> Self {
+        GenerationRule {
+            pattern: pattern.to_string(),
+            replacement: replacement.to_string(),
         }
     }
 }
