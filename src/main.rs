@@ -83,8 +83,10 @@ pub fn advance_pipes(
     if keys.just_pressed(KeyCode::Space) {
         let storage: &TileStorage = map_query.single_mut();
         let rules: Vec<GenerationRule> = vec![
-            GenerationRule::new(" +", "-+"),
-            GenerationRule::new(" -", "--"),
+            GenerationRule::new(" +", "-+-"),
+            GenerationRule::new("-+", "l+"),
+            GenerationRule::new("+-", "l-T"),
+            GenerationRule::new("l+", "T"),
         ];
         let mut str_rep = String::new();
         for y in 0..MAP_SIZE.y {
@@ -97,7 +99,11 @@ pub fn advance_pipes(
         }
 
         for rule in rules {
-            str_rep = str_rep.replace(&rule.pattern, &rule.replacement);
+            let new_str = str_rep.replace(&rule.pattern, &rule.replacement);
+            if new_str != str_rep {
+                str_rep = new_str;
+                break;
+            }
         }
 
         for y in 0..MAP_SIZE.y {
