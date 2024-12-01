@@ -5,7 +5,7 @@ use bevy::window::WindowResolution;
 use bevy_ecs_tilemap::prelude::*;
 use helpers::{
     background::setup_background,
-    machine::{GenerationRule, Pipe, PipeClusterConstructor, PipeKind},
+    machine::{GenerationRule, Pipe, PipeKind},
 };
 
 pub const MAP_SIZE: TilemapSize = TilemapSize { x: 20, y: 20 };
@@ -82,43 +82,35 @@ pub fn advance_pipes(
 ) {
     if keys.just_pressed(KeyCode::Space) {
         let storage: &TileStorage = map_query.single_mut();
-        // if pipe_query.iter().count() >= 1600 {
-        //     for (ent, _kind, _pos) in pipe_query.iter() {
-        //         commands
-        //             .entity(ent)
-        //             .remove::<PipeKind>()
-        //             .insert(TileTextureIndex(0));
-        //     }
-        //     commands
-        //         .entity(storage.get(&START_POS).unwrap())
-        //         .insert(Pipe::new(PipeKind::Cross));
-        //
-        //     return;
-        // }
-
-        let cluster = PipeClusterConstructor::new();
-        // This represents where and what to replace with what
-        let mut matches: Vec<Vec<(TilePos, PipeKind, PipeKind)>> = Vec::new();
-        let mut iter = storage.iter().peekable();
-        while let Some(tile) = iter.next() {
-            let (_ent, kind, pos) = pipe_query.get(tile.unwrap()).unwrap();
-            cluster.rules.iter().for_each(|rule| {
-                if rule.pattern.iter().next().unwrap().0 == *kind {
-                    matches.push(vec![(*pos, *kind, rule.pattern.iter().next().unwrap().1)]);
-                }
-            });
+        let rules: Vec<GenerationRule> = vec![
+            GenerationRule::new(" +", "-+"),
+            GenerationRule::new(" -", "--"),
+        ];
+        let mut str_rep = String::new();
+        for y in 0..MAP_SIZE.y {
+            for x in 0..MAP_SIZE.x {
+                let tile_pos = TilePos { x, y };
+                let pipe_entity = storage.get(&tile_pos).unwrap();
+                let (_ent, kind, _pos) = pipe_query.get(pipe_entity).unwrap();
+                str_rep.push_str(&kind.to_string());
+            }
         }
 
-        let mut rng = rand::thread_rng();
-        use rand::seq::SliceRandom;
+        for rule in rules {
+            str_rep = str_rep.replace(&rule.pattern, &rule.replacement);
+        }
 
-        if let Some(replace) = matches.choose(&mut rng) {
-            replace.iter().for_each(|(pos, _, kind)| {
-                let t = storage.get(pos).unwrap();
-                commands.entity(t).insert(Pipe::new(*kind));
-            })
-        } else {
-            println!("out of matches");
+        for y in 0..MAP_SIZE.y {
+            for x in 0..MAP_SIZE.x {
+                let tile_pos = TilePos { x, y };
+                let pipe_entity = storage.get(&tile_pos).unwrap();
+                let new_kind: PipeKind = str_rep
+                    .chars()
+                    .nth(y as usize * MAP_SIZE.x as usize + x as usize)
+                    .unwrap()
+                    .into();
+                commands.entity(pipe_entity).insert(Pipe::new(new_kind));
+            }
         }
     }
 }

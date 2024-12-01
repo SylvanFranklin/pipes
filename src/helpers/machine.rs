@@ -15,6 +15,35 @@ pub enum PipeKind {
     T,
 }
 
+impl From<char> for PipeKind {
+    fn from(c: char) -> Self {
+        use PipeKind::*;
+        match c {
+            '*' => Any,
+            ' ' => Empty,
+            '-' => Straight,
+            'l' => Elbow,
+            '+' => Cross,
+            'T' => T,
+            _ => Empty,
+        }
+    }
+}
+
+impl ToString for PipeKind {
+    fn to_string(&self) -> String {
+        use PipeKind::*;
+        match self {
+            Any => "*".to_string(),
+            Empty => " ".to_string(),
+            Straight => "-".to_string(),
+            Elbow => "l".to_string(),
+            Cross => "+".to_string(),
+            T => "T".to_string(),
+        }
+    }
+}
+
 #[allow(dead_code)]
 impl PipeKind {
     fn default() -> Self {
@@ -133,48 +162,15 @@ impl Pipe {
 #[derive(Clone)]
 pub struct GenerationRule {
     // making these one thing forces uniform length
-    pub pattern: Vec<(PipeKind, PipeKind)>,
-    pub interrupt: bool,
+    pub pattern: String,
+    pub replacement: String,
 }
 
 impl GenerationRule {
-    pub fn new(raw_pattern: &str, raw_replace: &str) -> Self {
-        let mut pattern: Vec<(PipeKind, PipeKind)> = Vec::new();
-
-        fn take(c: char) -> PipeKind {
-            use PipeKind::*;
-            match c {
-                ' ' => Empty,
-                '+' => Cross,
-                '-' => Straight,
-                'l' => Elbow,
-                'T' => T,
-                '*' => Any,
-                _ => unreachable!(),
-            }
-        }
-
-        String::from(raw_pattern)
-            .chars()
-            .zip(String::from(raw_replace).chars())
-            .for_each(|(p, r)| pattern.push((take(p), take(r))));
-
-        let interrupt = false;
-        GenerationRule { pattern, interrupt }
-    }
-}
-
-pub struct PipeClusterConstructor {
-    pub rules: Vec<GenerationRule>,
-}
-
-impl PipeClusterConstructor {
-    pub fn new() -> Self {
-        Self {
-            rules: vec![
-                GenerationRule::new(" ", "-"),
-                GenerationRule::new(" +", "-+"),
-            ],
+    pub fn new(pattern: &str, replacement: &str) -> Self {
+        GenerationRule {
+            pattern: pattern.to_string(),
+            replacement: replacement.to_string(),
         }
     }
 }
