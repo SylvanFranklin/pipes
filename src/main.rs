@@ -2,7 +2,7 @@ mod helpers;
 use bevy::core_pipeline::bloom::BloomSettings;
 use bevy::prelude::*;
 use bevy::window::WindowResolution;
-use bevy_ecs_tilemap::prelude::*;
+use bevy_ecs_tilemap::{helpers::square_grid::neighbors::Neighbors, prelude::*};
 use helpers::{
     background::setup_background,
     machine::{GenerationRule, Pipe, PipeKind},
@@ -82,40 +82,24 @@ pub fn advance_pipes(
 ) {
     if keys.just_pressed(KeyCode::Space) {
         let storage: &TileStorage = map_query.single_mut();
+        use PipeKind::*;
         let rules: Vec<GenerationRule> = vec![
-            GenerationRule::new(" +", "-+-"),
-            GenerationRule::new("-+", "l+"),
-            GenerationRule::new("+-", "l-T"),
-            GenerationRule::new("l+", "T"),
+            GenerationRule::new([Empty, Cross], [Straight, Cross]),
+            GenerationRule::new([Empty, Empty], [Empty, Elbow]),
         ];
-        let mut str_rep = String::new();
-        for y in 0..MAP_SIZE.y {
-            for x in 0..MAP_SIZE.x {
-                let tile_pos = TilePos { x, y };
-                let pipe_entity = storage.get(&tile_pos).unwrap();
-                let (_ent, kind, _pos) = pipe_query.get(pipe_entity).unwrap();
-                str_rep.push_str(&kind.to_string());
-            }
-        }
 
-        for rule in rules {
-            let new_str = str_rep.replace(&rule.pattern, &rule.replacement);
-            if new_str != str_rep {
-                str_rep = new_str;
-                break;
-            }
-        }
+        for (e, k, p) in pipe_query.iter() {
+            for rule in rules.iter() {
+                if rule.pattern[1] == *k {
+                    if Neighbors::get_square_neighboring_positions(p, &MAP_SIZE, false).iter().any(|np| {
+                        let (_, k, _) = pipe_query.get(storage.get(np).unwrap()).unwrap();
+                        *k == rule.pattern[2]
+                    }) {
+                        // firgure out how to get out of any without any side effects
+                        commands.get_entity(e).unwrap().insert(Pipe::new(rule.replacement[1]));
 
-        for y in 0..MAP_SIZE.y {
-            for x in 0..MAP_SIZE.x {
-                let tile_pos = TilePos { x, y };
-                let pipe_entity = storage.get(&tile_pos).unwrap();
-                let new_kind: PipeKind = str_rep
-                    .chars()
-                    .nth(y as usize * MAP_SIZE.x as usize + x as usize)
-                    .unwrap()
-                    .into();
-                commands.entity(pipe_entity).insert(Pipe::new(new_kind));
+                    }
+                }
             }
         }
     }
