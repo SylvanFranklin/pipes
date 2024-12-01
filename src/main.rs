@@ -95,7 +95,7 @@ pub fn advance_pipes(
                         let (_, k, _) = pipe_query.get(storage.get(np).unwrap()).unwrap();
                         *k == rule.pattern[2]
                     }) {
-                        // firgure out how to get out of any without any side effects
+                        // figure out how to get out of any without any side effects
                         commands.get_entity(e).unwrap().insert(Pipe::new(rule.replacement[1]));
 
                     }
