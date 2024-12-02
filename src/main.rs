@@ -88,16 +88,26 @@ pub fn advance_pipes(
             GenerationRule::new([Empty, Empty], [Empty, Elbow]),
         ];
 
-        for (e, k, p) in pipe_query.iter() {
-            for rule in rules.iter() {
-                if rule.pattern[1] == *k {
-                    if Neighbors::get_square_neighboring_positions(p, &MAP_SIZE, false).iter().any(|np| {
-                        let (_, k, _) = pipe_query.get(storage.get(np).unwrap()).unwrap();
-                        *k == rule.pattern[2]
-                    }) {
-                        // figure out how to get out of any without any side effects
-                        commands.get_entity(e).unwrap().insert(Pipe::new(rule.replacement[1]));
+        'rules: for rule in rules.iter() {
+            for (e, k, p) in pipe_query.iter() {
+                if rule.pattern[0] == *k {
+                    for np in
+                        Neighbors::get_square_neighboring_positions(p, &MAP_SIZE, false).iter()
+                    {
+                        let (ne, nk, _) = pipe_query.get(storage.get(np).unwrap()).unwrap();
+                        if *nk == rule.pattern[1] {
+                            // figure out how to get out of any without any side effects
+                            commands
+                                .get_entity(e)
+                                .unwrap()
+                                .insert(Pipe::new(rule.replacement[0]));
+                            commands
+                                .get_entity(ne)
+                                .unwrap()
+                                .insert(Pipe::new(rule.replacement[1]));
 
+                            break 'rules;
+                        }
                     }
                 }
             }
