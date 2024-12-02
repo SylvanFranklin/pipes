@@ -26,7 +26,7 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
             projection: OrthographicProjection {
                 far: 1000.,
                 near: -1000.,
-                scale: 3.,
+                scale: 4.,
                 ..default()
             },
 
@@ -60,7 +60,6 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     commands.entity(tilemap_entity).insert((TilemapBundle {
         grid_size: PIXEL_CELL_SIZE.into(),
-        size: MAP_SIZE,
         storage: tile_storage,
         texture: TilemapTexture::Single(texture_handle),
         tile_size: PIXEL_CELL_SIZE,
@@ -84,15 +83,16 @@ pub fn advance_pipes(
         let storage: &TileStorage = map_query.single_mut();
         use PipeKind::*;
         let rules: Vec<GenerationRule> = vec![
-            GenerationRule::new([Empty, Cross], [Straight, Cross]),
-            GenerationRule::new([Empty, Empty], [Empty, Elbow]),
+            GenerationRule::new([Cross, Empty], [Cross, Straight]),
+            GenerationRule::new([Empty, Straight], [Straight, Elbow]),
         ];
 
         'rules: for rule in rules.iter() {
             for (e, k, p) in pipe_query.iter() {
                 if rule.pattern[0] == *k {
-                    for np in
-                        Neighbors::get_square_neighboring_positions(p, &MAP_SIZE, false).iter()
+                    for (dir, np) in
+                        Neighbors::get_square_neighboring_positions(p, &MAP_SIZE, false)
+                            .iter_with_direction()
                     {
                         let (ne, nk, _) = pipe_query.get(storage.get(np).unwrap()).unwrap();
                         if *nk == rule.pattern[1] {
@@ -101,10 +101,11 @@ pub fn advance_pipes(
                                 .get_entity(e)
                                 .unwrap()
                                 .insert(Pipe::new(rule.replacement[0]));
+
                             commands
                                 .get_entity(ne)
                                 .unwrap()
-                                .insert(Pipe::new(rule.replacement[1]));
+                                .insert(Pipe::new(rule.replacement[1]).with_flip(dir));
 
                             break 'rules;
                         }

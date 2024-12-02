@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::{
-    helpers::square_grid::neighbors::{Neighbors, SquareDirection},
+    helpers::square_grid::neighbors::SquareDirection,
     tiles::{TileFlip, TileTextureIndex},
 };
 
@@ -148,7 +148,7 @@ impl Pipe {
                 d: true,
                 ..default()
             },
-            South | West if self.kind == Elbow => TileFlip {
+            North | South if self.kind == Elbow => TileFlip {
                 d: true,
                 ..default()
             },
@@ -167,10 +167,10 @@ pub struct GenerationRule {
 }
 
 impl GenerationRule {
-    pub fn new(pattern: [PipeKind; 2], replacement: [PipeKind ; 2]) -> Self {
+    pub fn new(pattern: [PipeKind; 2], replacement: [PipeKind; 2]) -> Self {
         GenerationRule {
             pattern,
-            replacement
+            replacement,
         }
     }
 }
