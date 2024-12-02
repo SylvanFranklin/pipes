@@ -162,15 +162,15 @@ impl Pipe {
 #[derive(Clone)]
 pub struct GenerationRule {
     // making these one thing forces uniform length
-    pub pattern: String,
-    pub replacement: String,
+    pub pattern: [PipeKind; 2],
+    pub replacement: [PipeKind; 2],
 }
 
 impl GenerationRule {
-    pub fn new(pattern: &str, replacement: &str) -> Self {
+    pub fn new(pattern: [PipeKind; 2], replacement: [PipeKind ; 2]) -> Self {
         GenerationRule {
-            pattern: pattern.to_string(),
-            replacement: replacement.to_string(),
+            pattern,
+            replacement
         }
     }
 }
