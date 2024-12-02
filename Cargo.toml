@@ -7,8 +7,6 @@ edition = "2021"
 [dependencies]
 bevy = "0.14.0"
 bevy_ecs_tilemap = "0.14.0"
-itertools = "0.13.0"
-petgraph = "0.6.5"
 rand = "0.8.5"
 
 # Enable a small amount of optimization in the dev profile.
